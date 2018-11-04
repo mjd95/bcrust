@@ -1,6 +1,8 @@
 extern crate clap;
+//extern crate libc;
 
 use clap::{App, Arg, SubCommand};
+//use libc::c_int;
 
 fn main() {
     let matches = App::new("bcrust")
