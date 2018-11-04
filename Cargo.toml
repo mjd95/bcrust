@@ -2,6 +2,7 @@
 name = "bcrust"
 version = "0.1.0"
 authors = ["Martin Dickson <martin.dickson34@gmail.com>"]
+build = "build.rs"
 
 [dependencies]
 clap = "2.26.0"

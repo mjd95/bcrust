@@ -1,10 +1,39 @@
 extern crate clap;
-//extern crate libc;
+use std::ffi::CString;
+use std::os::raw::c_char;
+extern crate libc;
+use libc::size_t;
+use std::str;
+
 
 use clap::{App, Arg, SubCommand};
-//use libc::c_int;
+
+extern {
+    fn bcrypt_hashpass(key: *const i8, salt: *const i8, encrypted: *mut u8, encrypted: size_t);
+}
+
+fn safe_bcrypt_hashpass(key: CString, salt: CString) -> Vec<u8> {
+    let key_ptr = key.as_ptr();
+    let salt_ptr = salt.as_ptr();
+    unsafe {
+        let dst_len = 72 as size_t;
+        let mut dst = Vec::with_capacity(dst_len as usize);
+
+        println!("calling in to c with {:?}, {:?}", key, salt);
+        bcrypt_hashpass(key_ptr, salt_ptr, dst.as_mut_ptr(), dst_len);
+        dst
+    }
+}
 
 fn main() {
+    let key = CString::new("key").expect("CString::new failed");
+    let salt = CString::new("$2bsalt").expect("CString::new failed");
+    let mut result = safe_bcrypt_hashpass(key, salt);
+    let s = match str::from_utf8(&mut result) {
+        Ok(v) => println!("{}", v),
+        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+    };
+    
     let matches = App::new("bcrust")
                     .version("0.1.0")
                     .author("Martin Dickson <martin.dickson34@gmail.com>")
