@@ -9,30 +9,22 @@ use std::str;
 use clap::{App, Arg, SubCommand};
 
 extern {
-    fn bcrypt_hashpass(key: *const i8, salt: *const i8, encrypted: *mut u8, encrypted: size_t);
+    fn bcrypt_hashpass(key: *const u8, salt: *const u8, encrypted: *mut u8, encrypted: size_t);
 }
 
-fn safe_bcrypt_hashpass(key: CString, salt: CString) -> Vec<u8> {
-    let key_ptr = key.as_ptr();
-    let salt_ptr = salt.as_ptr();
+fn safe_bcrypt_hashpass(key: &[u8], salt: &[u8]) {
     unsafe {
         let dst_len = 72 as size_t;
         let mut dst = Vec::with_capacity(dst_len as usize);
 
-        println!("calling in to c with {:?}, {:?}", key, salt);
-        bcrypt_hashpass(key_ptr, salt_ptr, dst.as_mut_ptr(), dst_len);
-        dst
+        bcrypt_hashpass(key.as_ptr(), salt.as_ptr(), dst.as_mut_ptr(), dst_len);
     }
 }
 
 fn main() {
-    let key = CString::new("key").expect("CString::new failed");
-    let salt = CString::new("$2bsalt").expect("CString::new failed");
-    let mut result = safe_bcrypt_hashpass(key, salt);
-    let s = match str::from_utf8(&mut result) {
-        Ok(v) => println!("{}", v),
-        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-    };
+    let key = String::from("key");
+    let salt = String::from("$2b$12$Skndv37pc.F7jj89.lyEwe");
+    safe_bcrypt_hashpass(key.as_bytes(), salt.as_bytes());
     
     let matches = App::new("bcrust")
                     .version("0.1.0")

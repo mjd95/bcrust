@@ -84,10 +84,6 @@ bcrypt_hashpass(const char *key, const char *salt, char *encrypted,
 
 	if (salt[0] != BCRYPT_VERSION)
 		goto inval;
-	printf("i just checked and i'm happy");
-	printf(salt);
-	printf("yeah");
-	printf(salt[0]);
 
 	/* Check for minor versions */
 	switch ((minor = salt[1])) {
