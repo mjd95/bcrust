@@ -12,20 +12,32 @@ extern {
     fn bcrypt_hashpass(key: *const u8, salt: *const u8, encrypted: *mut u8, encrypted: size_t);
 }
 
-fn safe_bcrypt_hashpass(key: &[u8], salt: &[u8]) {
+fn safe_bcrypt_hashpass(key: &[u8], salt: &[u8]) -> Vec<u8> {
     unsafe {
-        let dst_len = 72 as size_t;
-        let mut dst = Vec::with_capacity(dst_len as usize);
+        let dst_cap = 72 as size_t;
+        let mut dst = Vec::with_capacity(dst_cap as usize);
+        dst.set_len(dst_cap); // initially length == capacity
 
-        bcrypt_hashpass(key.as_ptr(), salt.as_ptr(), dst.as_mut_ptr(), dst_len);
+        bcrypt_hashpass(key.as_ptr(), salt.as_ptr(), dst.as_mut_ptr(), dst_cap);
+        set_true_len(&mut dst); // reduce to true length by finding first null byte
+        return dst
+    }
+}
+
+fn set_true_len(cstring: &mut Vec<u8>) {
+    let mut i = 0;
+    while i < cstring.len() {
+        if cstring[i] == b'\0' {
+            break
+        }
+        i += 1;
+    }
+    unsafe {
+        cstring.set_len(i)
     }
 }
 
 fn main() {
-    let key = String::from("key");
-    let salt = String::from("$2b$12$Skndv37pc.F7jj89.lyEwe");
-    safe_bcrypt_hashpass(key.as_bytes(), salt.as_bytes());
-    
     let matches = App::new("bcrust")
                     .version("0.1.0")
                     .author("Martin Dickson <martin.dickson34@gmail.com>")
@@ -60,7 +72,10 @@ fn main() {
 }
 
 fn hashpw(pw: &str) {
-    println!("the hash is 42!")
+    let salt = String::from("$2b$12$Skndv37pc.F7jj89.lyEwe");
+    let hash_bytes = safe_bcrypt_hashpass(pw.as_bytes(), salt.as_bytes());
+    let hash = String::from_utf8(hash_bytes).unwrap();
+    println!("the hash is {}", hash);
 }
 
 fn checkpw(pw: &str, hash: &str) {
