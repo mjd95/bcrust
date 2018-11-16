@@ -1,10 +1,10 @@
+extern crate base64;
 extern crate clap;
-use std::ffi::CString;
-use std::os::raw::c_char;
 extern crate libc;
+extern crate rand;
+use base64::encode;
 use libc::size_t;
 use std::str;
-
 
 use clap::{App, Arg, SubCommand};
 
@@ -69,6 +69,16 @@ fn main() {
     }
 
     println!("see `bcrust --help` for usage")
+}
+
+fn gensalt(rounds: u8) -> Vec<u8> {
+    let mut vec = String::from("$2b$").into_bytes();
+    let mut rounds_bytes = rounds.to_string().into_bytes();
+    vec.append(& mut rounds_bytes);
+    let salt: u64 = rand::random();
+    let mut salt_bytes = encode(&salt.to_string()).into_bytes();
+    vec.append(& mut salt_bytes);
+    vec
 }
 
 fn hashpw(pw: &str) {
