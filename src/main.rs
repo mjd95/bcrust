@@ -50,7 +50,8 @@ fn main() {
                     .get_matches();
     if let Some(hashpw_matches) = matches.subcommand_matches("hashpw") {
         if let Some(pw) = hashpw_matches.value_of("pw") {
-            hashpw(pw);
+            let salt = gensalt(12);
+            hashpw(pw, salt);
             return
         } 
         println!("invalid args to `hashpw`; see `bcrust hashpw --help` for usage");
@@ -59,8 +60,10 @@ fn main() {
 
     if let Some(checkpw_matches) = matches.subcommand_matches("checkpw") {
         if let Some(pw) = checkpw_matches.value_of("pw") {
+            // TODO: apparently this extracts the `pw` bytes as pwcheckpw\n which is really weird
+            // put a null byte after what you want and it should be fine (tho is unsafe i guess)?
             if let Some(hash) = checkpw_matches.value_of("hash") {
-                checkpw(pw, hash);
+                println!("{:?}", checkpw(pw, hash));
                 return
             }
         }
@@ -75,19 +78,27 @@ fn gensalt(rounds: u8) -> Vec<u8> {
     let mut vec = String::from("$2b$").into_bytes();
     let mut rounds_bytes = rounds.to_string().into_bytes();
     vec.append(& mut rounds_bytes);
+    vec.append(& mut String::from("$").into_bytes());
     let salt: u64 = rand::random();
     let mut salt_bytes = encode(&salt.to_string()).into_bytes();
     vec.append(& mut salt_bytes);
     vec
 }
 
-fn hashpw(pw: &str) {
-    let salt = String::from("$2b$12$Skndv37pc.F7jj89.lyEwe");
-    let hash_bytes = safe_bcrypt_hashpass(pw.as_bytes(), salt.as_bytes());
+fn hashpw(pw: &str, salt: Vec<u8>) {
+    let hash_bytes = safe_bcrypt_hashpass(pw.as_bytes(), &salt);
     let hash = String::from_utf8(hash_bytes).unwrap();
     println!("the hash is {}", hash);
 }
 
-fn checkpw(pw: &str, hash: &str) {
-    println!("curses!  they don't match")
+fn checkpw(pw: &str, hash: &str) -> bool {
+    let ret = safe_bcrypt_hashpass(pw.as_bytes(), hash.as_bytes());
+    if ret.len() != hash.len() {
+        return false
+    }
+
+    println!("{:?}", String::from_utf8(ret));
+    println!("{:?}", hash);
+
+    return true
 }
