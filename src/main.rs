@@ -4,8 +4,8 @@ extern crate libc;
 extern crate rand;
 use base64::encode;
 use libc::size_t;
+use std::ffi::CString;
 use std::str;
-
 use clap::{App, Arg, SubCommand};
 
 extern {
@@ -18,7 +18,13 @@ fn safe_bcrypt_hashpass(key: &[u8], salt: &[u8]) -> Vec<u8> {
         let mut dst = Vec::with_capacity(dst_cap as usize);
         dst.set_len(dst_cap); // initially length == capacity
 
-        bcrypt_hashpass(key.as_ptr(), salt.as_ptr(), dst.as_mut_ptr(), dst_cap);
+        // set null bytes at the end of our strings to stop c getting confused
+        let mut key_with_null = key.to_vec();
+        key_with_null.push(b'\0');
+        let mut salt_with_null = salt.to_vec();
+        salt_with_null.push(b'\0');
+
+        bcrypt_hashpass((& key_with_null).as_ptr(), (& salt_with_null).as_ptr(), dst.as_mut_ptr(), dst_cap);
         set_true_len(&mut dst); // reduce to true length by finding first null byte
         return dst
     }
@@ -63,7 +69,7 @@ fn main() {
             // TODO: apparently this extracts the `pw` bytes as pwcheckpw\n which is really weird
             // put a null byte after what you want and it should be fine (tho is unsafe i guess)?
             if let Some(hash) = checkpw_matches.value_of("hash") {
-                println!("{:?}", checkpw(pw, hash));
+                println!("password matches hash? - {:?}", checkpw(pw, hash));
                 return
             }
         }
@@ -97,8 +103,9 @@ fn checkpw(pw: &str, hash: &str) -> bool {
         return false
     }
 
-    println!("{:?}", String::from_utf8(ret));
-    println!("{:?}", hash);
+    if String::from_utf8(ret).unwrap() != hash {
+        return false
+    }
 
     return true
 }
